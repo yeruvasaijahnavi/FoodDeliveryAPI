@@ -13,7 +13,7 @@ const generateToken = (user) => {
 // Register route
 router.post("/register", async (req, res) => {
 	try {
-		const { email, password } = req.body;
+		const { email, password, role } = req.body;
 
 		if (!email || !password) {
 			return res
@@ -27,7 +27,7 @@ router.post("/register", async (req, res) => {
 		}
 
 		// Create a new user (password will be hashed by pre('save') hook)
-		const newUser = new User({ email, password });
+		const newUser = new User({ email, password, role });
 
 		await newUser.save();
 
