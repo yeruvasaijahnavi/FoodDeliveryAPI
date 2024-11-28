@@ -2,20 +2,47 @@ const express = require("express");
 const router = express.Router();
 const { authenticate, authorize } = require("../middleware/auth");
 const Order = require("../models/Order"); // Order model
+const User = require("../models/User");
 
 // POST /orders - Place a new order (User only)
 router.post("/", authenticate, authorize("customer"), async (req, res) => {
 	try {
+		// Fetch all users with the role "deliveryman"
+		const deliveryMen = await User.find({ role: "deliveryman" });
+
+		// If there are no delivery men available, return an error
+		if (deliveryMen.length === 0) {
+			return res.status(400).json({ error: "No delivery men available" });
+		}
+
+		// Pick a random delivery man
+		const randomDeliveryMan =
+			deliveryMen[Math.floor(Math.random() * deliveryMen.length)];
+
+		// Create the new order and assign the random delivery man
 		const newOrder = new Order({
 			user: req.user.id, // Automatically assigned from authenticated user
 			foodItems: req.body.foodItems, // Food names passed in the request body
 			totalPrice: req.body.totalPrice, // Total price passed in the request body
 			status: "pending", // Default status
+			deliveryMan: randomDeliveryMan._id,
+			deliveryManEmail: randomDeliveryMan.email,
 		});
+
+		// Save the new order
 		await newOrder.save();
+
+		// Respond with the newly created order
 		res.status(201).json(newOrder);
 	} catch (err) {
-		res.status(500).json({ error: "Failed to place order", msg: err });
+		// Log the error details to the console for debugging
+		console.error("Error placing order:", err);
+
+		// Send a more detailed error response
+		res.status(500).json({
+			error: "Failed to place order",
+			msg: err.message || err,
+		});
 	}
 });
 

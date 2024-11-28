@@ -12,8 +12,8 @@ router.get(
 		// Use authenticate
 		try {
 			const orders = await Order.find({
-				assignedTo: req.user.id,
-				status: "In Progress",
+				deliveryMan: req.user.id,
+				status: "pending",
 			});
 			res.status(200).json(orders);
 		} catch (err) {
@@ -22,26 +22,38 @@ router.get(
 	}
 );
 
-// PUT /orders/:id/delivered - Mark an order as delivered (Delivery Man only)
 router.put(
 	"/:id/delivered",
 	authenticate,
 	authorize("deliveryman"),
 	async (req, res) => {
-		// Use authenticate
 		try {
 			const order = await Order.findById(req.params.id);
-			if (order.assignedTo.toString() === req.user.id) {
-				order.status = "Delivered";
+
+			// Log the order and user for debugging
+			console.log("Order:", order);
+			console.log("User:", req.user.id);
+
+			if (!order) {
+				return res.status(404).json({ error: "Order not found" });
+			}
+
+			// Use deliveryMan instead of assignedTo
+			if (order.deliveryMan.toString() === req.user.id) {
+				order.status = "delivered";
 				await order.save();
-				res.status(200).json(order);
+				return res.status(200).json(order);
 			} else {
-				res.status(403).json({
+				return res.status(403).json({
 					error: "You are not authorized to update this order",
 				});
 			}
 		} catch (err) {
-			res.status(500).json({ error: "Failed to update order status" });
+			console.error("Error updating order:", err);
+			res.status(500).json({
+				error: "Failed to update order status",
+				msg: err.message,
+			});
 		}
 	}
 );

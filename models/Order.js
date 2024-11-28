@@ -7,10 +7,11 @@ const orderSchema = new mongoose.Schema({
 	totalPrice: Number,
 	status: {
 		type: String,
-		enum: ["pending", "accepted", "completed"],
+		enum: ["pending", "accepted", "delivered"],
 		default: "pending",
 	},
 	deliveryMan: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+	deliveryManEmail: String,
 });
 
 module.exports = mongoose.model("Order", orderSchema);
