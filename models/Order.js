@@ -1,8 +1,9 @@
+// models/Order.js
 const mongoose = require("mongoose");
 
 const orderSchema = new mongoose.Schema({
 	user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-	foodItems: [{ type: mongoose.Schema.Types.ObjectId, ref: "Food" }],
+	foodItems: [{ type: String, required: true }], // Store food names as strings
 	totalPrice: Number,
 	status: {
 		type: String,
