@@ -79,20 +79,27 @@ router.get(
 );
 
 // GET /orders/:id - View order details (User or Admin)
+
 router.get("/:id", authenticate, async (req, res) => {
 	try {
+		// Fetch the order and populate user and foodItems fields
 		const order = await Order.findById(req.params.id)
 			.populate("user")
 			.populate("foodItems");
+
+		// Check if the user is an admin or if the order belongs to the logged-in user
 		if (
 			req.user.role === "admin" ||
-			order.user.toString() === req.user.id
+			order.user._id.toString() === req.user.id
 		) {
+			// If conditions are met, return the order details
 			res.status(200).json(order);
 		} else {
+			// If the user does not own the order, return an error
 			res.status(403).json({ error: "Access denied" });
 		}
 	} catch (err) {
+		// Catch any errors and return a response with a failure message
 		res.status(500).json({ error: "Failed to fetch order details" });
 	}
 });
