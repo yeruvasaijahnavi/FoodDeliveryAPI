@@ -18,7 +18,6 @@ app.use(express.json());
 // Routes
 app.use("/api/foods", foodRoutes);
 app.use("/api/orders", orderRoutes);
-app.use("/api/delivery", deliveryRoutes);
 app.use("/api/auth", authRoutes);
 
 // Connect to MongoDB
