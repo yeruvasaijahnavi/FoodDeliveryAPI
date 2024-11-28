@@ -3,42 +3,41 @@ const router = express.Router();
 const { authenticate, authorize } = require("../middleware/auth");
 const Order = require("../models/Order"); // Order model
 const User = require("../models/User");
+const Log = require("../models/Log"); // Log model
 
 // POST /orders - Place a new order (User only)
 router.post("/", authenticate, authorize("customer"), async (req, res) => {
 	try {
-		// Fetch all users with the role "deliveryman"
 		const deliveryMen = await User.find({ role: "deliveryman" });
 
-		// If there are no delivery men available, return an error
 		if (deliveryMen.length === 0) {
 			return res.status(400).json({ error: "No delivery men available" });
 		}
 
-		// Pick a random delivery man
 		const randomDeliveryMan =
 			deliveryMen[Math.floor(Math.random() * deliveryMen.length)];
 
-		// Create the new order and assign the random delivery man
 		const newOrder = new Order({
-			user: req.user.id, // Automatically assigned from authenticated user
-			foodItems: req.body.foodItems, // Food names passed in the request body
-			totalPrice: req.body.totalPrice, // Total price passed in the request body
-			status: "pending", // Default status
+			user: req.user.id,
+			foodItems: req.body.foodItems,
+			totalPrice: req.body.totalPrice,
+			status: "pending",
 			deliveryMan: randomDeliveryMan._id,
 			deliveryManEmail: randomDeliveryMan.email,
 		});
 
-		// Save the new order
 		await newOrder.save();
 
-		// Respond with the newly created order
+		// Log the action
+		await Log.create({
+			action: "Order Placed",
+			user: req.user.id,
+			details: `Order ID: ${newOrder._id} placed by User ID: ${req.user.id}`,
+		});
+
 		res.status(201).json(newOrder);
 	} catch (err) {
-		// Log the error details to the console for debugging
 		console.error("Error placing order:", err);
-
-		// Send a more detailed error response
 		res.status(500).json({
 			error: "Failed to place order",
 			msg: err.message || err,
@@ -53,53 +52,68 @@ router.get("/", authenticate, authorize("admin"), async (req, res) => {
 			.populate("user")
 			.populate("foodItems");
 		res.status(200).json(orders);
+
+		// Log the action
+		await Log.create({
+			action: "View All Orders",
+			user: req.user.id,
+			details: `Admin ID: ${req.user.id} viewed all orders.`,
+		});
 	} catch (err) {
 		res.status(500).json({ error: "Failed to fetch orders" });
 	}
 });
 
+// GET /orders/assigned - View assigned orders (Deliveryman only)
 router.get(
 	"/assigned",
 	authenticate,
 	authorize("deliveryman"),
 	async (req, res) => {
-		// Use authenticate
 		try {
 			const orders = await Order.find({
 				deliveryMan: req.user.id,
 				status: "pending",
 			});
 			res.status(200).json(orders);
+
+			// Log the action
+			await Log.create({
+				action: "View Assigned Orders",
+				user: req.user.id,
+				details: `Deliveryman ID: ${req.user.id} viewed their assigned orders.`,
+			});
 		} catch (err) {
 			res.status(500).json({
-				error: "Failed to fetch deliverymans assigned orders",
+				error: "Failed to fetch assigned orders",
 			});
 		}
 	}
 );
 
 // GET /orders/:id - View order details (User or Admin)
-
 router.get("/:id", authenticate, async (req, res) => {
 	try {
-		// Fetch the order and populate user and foodItems fields
 		const order = await Order.findById(req.params.id)
 			.populate("user")
 			.populate("foodItems");
 
-		// Check if the user is an admin or if the order belongs to the logged-in user
 		if (
 			req.user.role === "admin" ||
 			order.user._id.toString() === req.user.id
 		) {
-			// If conditions are met, return the order details
 			res.status(200).json(order);
+
+			// Log the action
+			await Log.create({
+				action: "View Order Details",
+				user: req.user.id,
+				details: `User ID: ${req.user.id} viewed details of Order ID: ${req.params.id}`,
+			});
 		} else {
-			// If the user does not own the order, return an error
 			res.status(403).json({ error: "Access denied" });
 		}
 	} catch (err) {
-		// Catch any errors and return a response with a failure message
 		res.status(500).json({ error: "Failed to fetch order details" });
 	}
 });
@@ -116,6 +130,14 @@ router.put(
 				{ status: req.body.status },
 				{ new: true }
 			);
+
+			// Log the action
+			await Log.create({
+				action: "Update Order Status",
+				user: req.user.id,
+				details: `Admin ID: ${req.user.id} updated status of Order ID: ${req.params.id} to ${req.body.status}`,
+			});
+
 			res.status(200).json(updatedOrder);
 		} catch (err) {
 			res.status(500).json({ error: "Failed to update order status" });
@@ -123,6 +145,7 @@ router.put(
 	}
 );
 
+// PUT /orders/:id/delivered - Mark order as delivered (Deliveryman only)
 router.put(
 	"/:id/delivered",
 	authenticate,
@@ -131,18 +154,21 @@ router.put(
 		try {
 			const order = await Order.findById(req.params.id);
 
-			// Log the order and user for debugging
-			console.log("Order:", order);
-			console.log("User:", req.user.id);
-
 			if (!order) {
 				return res.status(404).json({ error: "Order not found" });
 			}
 
-			// Use deliveryMan instead of assignedTo
 			if (order.deliveryMan.toString() === req.user.id) {
 				order.status = "delivered";
 				await order.save();
+
+				// Log the action
+				await Log.create({
+					action: "Order Delivered",
+					user: req.user.id,
+					details: `Deliveryman ID: ${req.user.id} marked Order ID: ${req.params.id} as delivered.`,
+				});
+
 				return res.status(200).json(order);
 			} else {
 				return res.status(403).json({
