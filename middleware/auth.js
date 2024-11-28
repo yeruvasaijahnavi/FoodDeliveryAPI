@@ -13,23 +13,14 @@ const authenticate = (req, res, next) => {
 	}
 };
 
-// New isDeliveryMan function
-const isDeliveryMan = (req, res, next) => {
-	// Assuming that the role of the user is available in req.user
-	if (req.user.role !== "DeliveryMan") {
-		return res.status(403).send("Access denied: Not a delivery man");
-	}
-	next();
-};
-
 const authorize = (role) => (req, res, next) => {
 	if (req.user.role !== role)
 		return res
 			.status(403)
 			.send(
-				`Access denied, you must be a ${role} to access this service`
+				`Access denied, you must be a ${role} to access this service. You are a ${req.user.role}`
 			);
 	next();
 };
 
-module.exports = { authenticate, authorize, isDeliveryMan }; // Ensure isDeliveryMan is exported
+module.exports = { authenticate, authorize };
