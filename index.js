@@ -9,8 +9,8 @@ const app = express();
 // Import route files
 const foodRoutes = require("./routes/foods");
 const orderRoutes = require("./routes/orders");
-const deliveryRoutes = require("./routes/delivery");
 const authRoutes = require("./routes/auth");
+const logRoutes = require("./routes/logs");
 
 // Middleware
 app.use(express.json());
@@ -19,6 +19,7 @@ app.use(express.json());
 app.use("/api/foods", foodRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/logs", logRoutes);
 
 // Connect to MongoDB
 const mongoUri = process.env.MONGO_URI;
