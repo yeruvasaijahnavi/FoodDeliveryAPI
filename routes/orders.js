@@ -58,6 +58,26 @@ router.get("/", authenticate, authorize("admin"), async (req, res) => {
 	}
 });
 
+router.get(
+	"/assigned",
+	authenticate,
+	authorize("deliveryman"),
+	async (req, res) => {
+		// Use authenticate
+		try {
+			const orders = await Order.find({
+				deliveryMan: req.user.id,
+				status: "pending",
+			});
+			res.status(200).json(orders);
+		} catch (err) {
+			res.status(500).json({
+				error: "Failed to fetch deliverymans assigned orders",
+			});
+		}
+	}
+);
+
 // GET /orders/:id - View order details (User or Admin)
 router.get("/:id", authenticate, async (req, res) => {
 	try {
@@ -92,6 +112,42 @@ router.put(
 			res.status(200).json(updatedOrder);
 		} catch (err) {
 			res.status(500).json({ error: "Failed to update order status" });
+		}
+	}
+);
+
+router.put(
+	"/:id/delivered",
+	authenticate,
+	authorize("deliveryman"),
+	async (req, res) => {
+		try {
+			const order = await Order.findById(req.params.id);
+
+			// Log the order and user for debugging
+			console.log("Order:", order);
+			console.log("User:", req.user.id);
+
+			if (!order) {
+				return res.status(404).json({ error: "Order not found" });
+			}
+
+			// Use deliveryMan instead of assignedTo
+			if (order.deliveryMan.toString() === req.user.id) {
+				order.status = "delivered";
+				await order.save();
+				return res.status(200).json(order);
+			} else {
+				return res.status(403).json({
+					error: "You are not authorized to update this order",
+				});
+			}
+		} catch (err) {
+			console.error("Error updating order:", err);
+			res.status(500).json({
+				error: "Failed to update order status",
+				msg: err.message,
+			});
 		}
 	}
 );
